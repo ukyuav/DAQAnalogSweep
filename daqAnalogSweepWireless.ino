@@ -6,20 +6,17 @@
  #include <ExtendedADCShield.h>
  #include <SPI.h>
 
- //Union of float and byte array; used to send floats over serial.
-typedef union {
-  float floatingPoint;
-  byte binary[4];
-} binaryFloat;
+const int NUM_CHAN = 8;
+const int IMET_TRIGGER_PIN = 13;
 
-const int numDAQChan = 8;
+//Initialize ADC Shield with default pins and 16-bit ADC (LTC1959)
+ExtendedADCShield extendedADCShield(16);
 
-//array of binaryFloats for all daq channels. Stores sample for exactly 1 DAQ sweep.
-binaryFloat sensorValue[numDAQChan];  
+//array of sensorValues (floating point)
+float sensorValues[NUM_CHAN], tempFloat;
 
- //Initialize ADC Shield with default pins and 16-bit ADC (LTC1959)
- ExtendedADCShield extendedADCShield(16);
-
+//string that contains a CSV style list of all DAQ channel values
+String chanList, tempStr;
 
  
 
@@ -27,16 +24,34 @@ void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
   extendedADCShield.analogReadConfigNext(0, SINGLE_ENDED, BIPOLAR, RANGE10V);
+  pinMode(IMET_TRIGGER_PIN, INPUT);
+  
+  //initialize all sensors to 0
+  for(int i = 0; i < NUM_CHAN; i++){
+    sensorValues[i] = 0;
+  }
 }
 
+
 void loop() {
+ while((digitalRead(IMET_TRIGGER_PIN)!=HIGH)){
+}
+  
   // put your main code here, to run repeatedly:
-  for (int i = 0; i < numDAQChan; i++){
-    sensorValue[i].floatingPoint = extendedADCShield.analogReadConfigNext((i+1)%8, SINGLE_ENDED, BIPOLAR, RANGE10V);//sensorValue*(5.0/1023.0);
+  for (int i = 0; i < NUM_CHAN; i++){
+    sensorValues[i] = extendedADCShield.analogReadConfigNext((i+1)%8, SINGLE_ENDED, BIPOLAR, RANGE10V);//sensorValue*(5.0/1023.0);
+  }
+  
+  chanList = ""; // clear chanList
+  
+  for(int i = 0; i < NUM_CHAN; i++){
+   tempFloat = sensorValues[i];
+   tempStr = String(tempFloat);
+   tempStr= String(tempStr + ",");
+   chanList += tempStr;  
+
   }
 
-  for (int i = 0; i < numDAQChan; i++){
-    Serial.write(sensorValue[i].binary,4);
-  }
-  delay(5000);
+ Serial.print(chanList);
+
 } 
